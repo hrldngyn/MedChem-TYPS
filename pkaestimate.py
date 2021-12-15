@@ -229,8 +229,8 @@ groups = {"amine": "[#7]",
 molecule_SMILES = "c1cc(ccc1)C2CCNCC2" #4-phenylpiperidine
 
 ##pubchem requests - remember to print out actual p ka
-drugsmiles = input("Enter a SMILES string")
-url = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/" + drugsmiles + "/property/Title/txt" #,MolecularWeight,XLogP,TPSA,HBondDonorCount,HBondAcceptorCount,RotatableBondCount/"
+drugsmiles = molecule_SMILES #input("Enter a SMILES string")
+url = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/" + drugsmiles + "/property/Title,MolecularWeight,XLogP,TPSA,HBondDonorCount,HBondAcceptorCount,RotatableBondCount/csv" #,MolecularWeight,XLogP,TPSA,HBondDonorCount,HBondAcceptorCount,RotatableBondCount/"
 try:
     u_a = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:39.0) Gecko/20100101 Firefox/39.0"
     response = requests.get(url, headers={"USER-AGENT":u_a, "Accept": "application/xml"})
