@@ -5,8 +5,8 @@ from rdkit.Chem.Draw import rdMolDraw2D
 from rdkit.Chem import Fragments
 from rdkit.Chem import Descriptors
 
-import matplotlib.pyplot as pyplot
-import matplotlib.image as mpimg
+# import matplotlib.pyplot as pyplot
+# import matplotlib.image as mpimg
 
 import requests
 
@@ -15,7 +15,6 @@ from collections.abc import Iterable
 
 import os
 
-from sqlalchemy import true
 os.chdir(os.path.join(__file__, '..'))
 
 SP3 = Chem.rdchem.HybridizationType.SP3
