@@ -82,7 +82,7 @@ def pkamodule():
         estanddraw(c, mol)
 
         props = e.getProperties(mol)
-        oldprops = {}
+        oldprops = {'molw': 0}
         filename = 'oldprops.pk'
         if os.path.exists(filename) and os.stat(filename).st_size != 0:
             with open(filename, 'rb') as fi:
