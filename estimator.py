@@ -15,7 +15,8 @@ from collections.abc import Iterable
 
 import os
 
-os.chdir(os.path.join(__file__, '..'))
+
+os.chdir(os.path.dirname(__file__))
 
 SP3 = Chem.rdchem.HybridizationType.SP3
 
