@@ -21,7 +21,11 @@ def strToMol(input, inputmode):
     if(inputmode == 'SMILES'):
         mol = Chem.MolFromSmiles(input)
     elif(inputmode == 'Drug Name'):
-        mol = Chem.MolFromSmiles(e.nameToSMILES(input))
+        try:
+            mol = Chem.MolFromSmiles(e.nameToSMILES(input))
+        except TypeError:
+            mol = Chem.MolFromSmiles("")
+            st.error("PubChem search failed, probably")
     return mol
 
 def estanddraw(c, mol):
@@ -47,12 +51,13 @@ def estanddraw(c, mol):
             v.setStyle({'stick':{}})
             v.setBackgroundColor('white')
             v.zoomTo()
-            showmol(v,height=800,width=800)
+            showmol(v,height=600,width=800)
 
         #c.write(e.getProperties(mol))
     
     except AttributeError:
-        st.header("Invalid string, probably")
+        st.error("Invalid string, probably")
+    
 
 def getdeltas(old, props):
     deltas = {}
@@ -79,7 +84,8 @@ def displayproperties(props, deltas):
 def pkamodule():
     def updatepka():
         mol = strToMol(molecule_input, inputmode)
-        estanddraw(c, mol)
+        if mol.GetNumAtoms() != 0:
+            estanddraw(c, mol)
 
         props = e.getProperties(mol)
         oldprops = {'molw': 0}
@@ -88,8 +94,9 @@ def pkamodule():
             with open(filename, 'rb') as fi:
                 oldprops = pickle.load(fi)
                 print(oldprops)
-        with open(filename, 'wb') as fi:
-            pickle.dump(props, fi)
+        if props['molw'] != 0:
+            with open(filename, 'wb') as fi:
+                pickle.dump(props, fi)
         
         deltas = getdeltas(oldprops, props)
         if deltas['molw'] == 0:
