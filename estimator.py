@@ -1,3 +1,4 @@
+from numpy import indices
 from rdkit import Chem
 from rdkit.Chem import rdchem
 from rdkit.Chem import Draw
@@ -22,6 +23,7 @@ SP3 = Chem.rdchem.HybridizationType.SP3
 
 groups = {
         "amide": "C(=O)-N",
+        "amidine": "C(=N)(-N)-[!#7]",
         "amine_primary": "[NH2,nH2]",
         "amine_secondary": "[NH1,nH1]",
         "amine_tertiary": "[NH,nH]",
@@ -34,14 +36,27 @@ groups = {
         "carbonyl": "[CX3]=[OX1]" ,
         "C_aromatic": "[$([cX3](:*):*),$([cX2+](:*):*)]",
         "ester": "[#6][CX3](=O)[OX2H0][#6]",
+        "guanidine": "C(=N)(N)N",
         "phenol": "[OX2H]-c1ccccc1",
         "pyridine": "n1ccccc1",
         "sulfur": "[S]",
+        "sulfenamide": "S-N",
         "sulfonamide": "N-S(=,-[OX1;+0,-1])(=,-[OX1;+0,-1])-[#6]",
         "tetrazole": "c1nnnn1",
         "phosphorous": "[P]",
         "halogen": "[F,Cl,Br,I]",
 }
+
+exclude_groups = groups.copy()
+keep_groups = (
+        "amine_primary",
+        "amine_secondary",
+        "amine_tertiary",
+        "COOH"
+    )
+
+for k in keep_groups:
+    exclude_groups.pop(k)
 
 #chem.fragments docs
 acids = {
@@ -310,14 +325,23 @@ def estimateMolecule(m):
     for i in COOHindices:
         print(BFestimate(m, i, EWGindices, 4.8))
     
-    amideNindices = []
-    for x in m.GetSubstructMatches(Chem.MolFromSmarts(groups["amide"])):
-        amideNindices.append(x[2])
-    print("amide Ns")
-    print(amideNindices)
+    excludeindices = [] #amide Ns, etc.
+
+    for e in exclude_groups:
+        for x in m.GetSubstructMatches(Chem.MolFromSmarts(exclude_groups[e])):
+            excludeindices.append(x)
+
+    excludeindices = set(flatten(excludeindices))
+    print("excludeindices")
+    print(excludeindices)
+    # amideNindices = []
+    # for x in m.GetSubstructMatches(Chem.MolFromSmarts(groups["amide"])):
+    #     amideNindices.append(x[2])
+    # print("amide Ns")
+    # print(amideNindices)
     Nindices = []
     for x in m.GetSubstructMatches(Chem.MolFromSmarts('N')):
-        if x[0] not in amideNindices:
+        if x[0] not in excludeindices:
             Nindices.append(x[0])
     for i in Nindices:
         print(BFestimate(m, i, EWGindices, 10.6, True))
@@ -356,6 +380,32 @@ def nameToSMILES(name):
     except requests.exceptions.RequestException as err:
         print(err)
 
+def SMILESToName(SMILES):
+    properties = 'Title,CanonicalSMILES,MolecularWeight,XLogP,TPSA,HBondDonorCount,HBondAcceptorCount,RotatableBondCount'
+    titleindex = properties.split(",").index("Title") + 1 #add 1 because CID always shows
+    url = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/" + SMILES + "/property/" + properties + "/csv"
+    
+    if SMILES == "":
+        return Chem.MolFromSmiles("")
+    try:
+        u_a = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:39.0) Gecko/20100101 Firefox/39.0"
+        response = requests.get(url, headers={"USER-AGENT":u_a, "Accept": "application/xml"})
+        response = requests.get(url)
+        response.raise_for_status()
+        
+        data = response.text.splitlines()
+        name = data[1].split(",")[titleindex].strip('"')
+        print(name)
+        return(name)
+
+    except requests.exceptions.HTTPError as errh:
+        print(errh)
+    except requests.exceptions.ConnectionError as errc:
+        print(errc)
+    except requests.exceptions.Timeout as errt:
+        print(errt)
+    except requests.exceptions.RequestException as err:
+        print(err)
 
 def getProperties(m):
     #MW, LogP, TPSA, HBD, HBA, RotB

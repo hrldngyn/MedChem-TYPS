@@ -14,8 +14,6 @@ import os
 
 import estimator as e
 
-history = []
-oldprops = {}
 
 def strToMol(input, inputmode):
     if(inputmode == 'SMILES'):
@@ -71,7 +69,8 @@ def getdeltas(old, props):
         for label in props:        
             deltas[label] = None
     return deltas
-def displayproperties(props, deltas):
+def displayproperties(name, props, deltas):
+    st.header(name)
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     col1.metric(label="Molecular Weight", value=props["molw"], delta = deltas["molw"])
     col2.metric(label="Crippen LogP", value=props["logp"], delta = deltas["logp"])
@@ -103,9 +102,11 @@ def pkamodule():
             if deltas['molw'] == 0 or props['molw'] == 0:
                 for label in deltas:        
                     deltas[label] = None
-            displayproperties(props, deltas)
+            
+            name = e.SMILESToName(Chem.MolToSmiles(mol))
+            displayproperties(name, props, deltas)
 
-            history.append(molecule_input)
+            #history.append(molecule_input)
         
         except AttributeError:
             st.error("Not a valid molecule")
