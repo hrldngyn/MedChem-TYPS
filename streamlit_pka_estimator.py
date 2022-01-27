@@ -20,6 +20,9 @@ oldprops = {}
 def strToMol(input, inputmode):
     if(inputmode == 'SMILES'):
         mol = Chem.MolFromSmiles(input)
+        if mol is None:
+            mol = Chem.MolFromSmiles("")
+            st.error("Not a valid SMILES, probably")
     elif(inputmode == 'Drug Name'):
         try:
             mol = Chem.MolFromSmiles(e.nameToSMILES(input))
@@ -78,34 +81,34 @@ def displayproperties(props, deltas):
     col6.metric(label="Rotatable Bonds", value=props["rotb"], delta = deltas["rotb"])
 
 
-
-    
-
 def pkamodule():
     def updatepka():
-        mol = strToMol(molecule_input, inputmode)
-        if mol.GetNumAtoms() != 0:
-            estanddraw(c, mol)
+        try:
+            mol = strToMol(molecule_input, inputmode)
+            if mol.GetNumAtoms() != 0:
+                estanddraw(c, mol)
 
-        props = e.getProperties(mol)
-        oldprops = {'molw': 0}
-        filename = 'oldprops.pk'
-        if os.path.exists(filename) and os.stat(filename).st_size != 0:
-            with open(filename, 'rb') as fi:
-                oldprops = pickle.load(fi)
-                print(oldprops)
-        if props['molw'] != 0:
-            with open(filename, 'wb') as fi:
-                pickle.dump(props, fi)
+            props = e.getProperties(mol)
+            oldprops = {'molw': 0}
+            filename = 'oldprops.pk'
+            if os.path.exists(filename) and os.stat(filename).st_size != 0:
+                with open(filename, 'rb') as fi:
+                    oldprops = pickle.load(fi)
+                    print(oldprops)
+            if props['molw'] != 0:
+                with open(filename, 'wb') as fi:
+                    pickle.dump(props, fi)
+            
+            deltas = getdeltas(oldprops, props)
+            if deltas['molw'] == 0 or props['molw'] == 0:
+                for label in deltas:        
+                    deltas[label] = None
+            displayproperties(props, deltas)
+
+            history.append(molecule_input)
         
-        deltas = getdeltas(oldprops, props)
-        if deltas['molw'] == 0:
-            for label in deltas:        
-                deltas[label] = None
-        displayproperties(props, deltas)
-
-        history.append(molecule_input)
-
+        except AttributeError:
+            st.error("Not a valid molecule")
 
     ph = {
         'SMILES': 'SMILES for the camera, please',
@@ -120,8 +123,7 @@ def pkamodule():
     if molecule_input != "":
         updatepka()
     
-
-modecol, viewcol = st.columns(2)
+modecol, viewcol = st.sidebar.columns(2)
 mode = modecol.radio(
     label = "Mode", 
     options = ["pKa Estimation"])
