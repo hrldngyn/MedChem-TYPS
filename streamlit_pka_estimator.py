@@ -1,5 +1,3 @@
-from cProfile import label
-from sqlalchemy import true
 import streamlit as st
 from stmol import showmol
 import py3Dmol
