@@ -415,7 +415,8 @@ def getProperties(m):
         "tpsa": Chem.MolSurf.TPSA(m),
         "hbd": Chem.Lipinski.NumHDonors(m),
         "hba": Chem.Lipinski.NumHAcceptors(m),
-        "rotb": Chem.Lipinski.NumRotatableBonds(m)
+        "rotb": Chem.Lipinski.NumRotatableBonds(m),
+        "carbonyls": Chem.Fragments.fr_C_O(m)
     }
 
     print(properties)

@@ -1,3 +1,5 @@
+from cProfile import label
+from sqlalchemy import true
 import streamlit as st
 from stmol import showmol
 import py3Dmol
@@ -29,17 +31,19 @@ def strToMol(input, inputmode):
             st.error("PubChem search failed, probably")
     return mol
 
-def estanddraw(c, mol):
+def draw(c, mol):
     try:
-        print(mol)
-        e.estimateMolecule(mol)
+
+        
 
         if view == "RDKit 2D":
             d = rdMolDraw2D.MolDraw2DSVG(800,800) # or MolDraw2DSVG to get SVGs
             d.drawOptions().addStereoAnnotation = True
             d.drawOptions().addAtomIndices = True
             d.drawOptions().fixedBondLength = 100
+            d.drawOptions().comicMode = True
             d.DrawMolecule(mol)
+            d.TagAtoms(mol)
             d.FinishDrawing()
             im = d.GetDrawingText()
             c.image(im)
@@ -69,15 +73,18 @@ def getdeltas(old, props):
         for label in props:        
             deltas[label] = None
     return deltas
-def displayproperties(name, props, deltas):
-    st.header(name)
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
-    col1.metric(label="Molecular Weight", value=props["molw"], delta = deltas["molw"])
-    col2.metric(label="Crippen LogP", value=props["logp"], delta = deltas["logp"])
-    col3.metric(label="TPSA", value=props["tpsa"], delta = deltas["tpsa"])
-    col4.metric(label="HB Donors", value=props["hbd"], delta = deltas["hbd"])
-    col5.metric(label="HB Acceptors", value=props["hba"], delta = deltas["hba"])
-    col6.metric(label="Rotatable Bonds", value=props["rotb"], delta = deltas["rotb"])
+def displayproperties(props, deltas, showanswers):
+    if showanswers:
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
+        col1.metric(label="Molecular Weight", value=props["molw"], delta = deltas["molw"])
+        col2.metric(label="Crippen LogP", value=props["logp"], delta = deltas["logp"])
+        col3.metric(label="TPSA", value=props["tpsa"], delta = deltas["tpsa"])
+        col4.metric(label="HB Donors", value=props["hbd"], delta = deltas["hbd"])
+        col5.metric(label="HB Acceptors", value=props["hba"], delta = deltas["hba"])
+        col6.metric(label="Rotatable Bonds", value=props["rotb"], delta = deltas["rotb"])
+
+        col7, col8, col9, col10, col11, col12 = st.columns(6)
+        col7.metric(label="Carbonyls", value = props["carbonyls"], delta = deltas["carbonyls"])
 
 
 def pkamodule():
@@ -85,7 +92,11 @@ def pkamodule():
         try:
             mol = strToMol(molecule_input, inputmode)
             if mol.GetNumAtoms() != 0:
-                estanddraw(c, mol)
+                if showanswers:
+                    e.estimateMolecule(mol)
+                    draw(c, mol)
+                else:
+                    draw(c, mol)
 
             props = e.getProperties(mol)
             oldprops = {'molw': 0}
@@ -104,9 +115,10 @@ def pkamodule():
                     deltas[label] = None
             
             name = e.SMILESToName(Chem.MolToSmiles(mol))
-            displayproperties(name, props, deltas)
+            st.header(name)
+            displayproperties(props, deltas, showanswers)
 
-            #history.append(molecule_input)
+            history.append((mol, molecule_input))
         
         except AttributeError:
             st.error("Not a valid molecule")
@@ -119,21 +131,95 @@ def pkamodule():
     st.title('pKa Estimation')
     inputmode = st.selectbox('Input Format', options = ['SMILES', 'Drug Name'])
     molecule_input = st.text_input('Input', placeholder=ph[inputmode], key='input')
+    showanswers = st.checkbox("Show Answers")
 
     c = st.container()
+
+    history = []
+
     if molecule_input != "":
         updatepka()
+
+
+
+
+
+
+def substratecrystalsmodule():
+    sclass = optscol.radio(
+        label = "Substrate Class",
+        options = ["SSRIs", "NSAIDs", "custom"])
+    style = st.sidebar.selectbox('style',['line','cross','stick','sphere','cartoon','clicksphere'])
+    spin = st.sidebar.checkbox('Spin', value = False)
+    if sclass != "custom":
+        protviews = loadproteins(drugclass = sclass)
+        protpicks = []
+        for v in protviews:
+            protpicks.append(v[1])
     
-modecol, viewcol = st.sidebar.columns(2)
+
+        pick = st.sidebar.selectbox('Select Protein', protpicks)
+        activeview = protviews[protpicks.index(pick)][0]
+        activeview.setStyle({style:{'color':'spectrum'}})
+        activeview.setBackgroundColor('white')
+        activeview.zoomTo()
+        activeview.spin(spin)
+        showmol(protviews[protpicks.index(pick)][0], height=2000, width=2000)
+
+    elif sclass == "custom":
+        uploaded_files = st.sidebar.file_uploader("Choose .pdb files", accept_multiple_files=True)
+        for f in uploaded_files:
+            pdb = f.getvalue().decode("utf-8")
+            pdbview = py3Dmol.view(width=1000, height=1000)
+            pdbview.addModel(pdb, 'pdb')
+            pdbview.setStyle({style:{'color':'spectrum'}})
+            pdbview.setBackgroundColor('white')
+            pdbview.zoomTo()
+            pdbview.spin(spin)
+            showmol(pdbview, height=2000, width=2000)
+            
+
+
+def loadproteins(pdblist = None, drugclass = None):
+
+    pdbviewlist = []
+    drugclasses = {
+        "SSRIs": '5I71,5I6X,6AWO',
+        "NSAIDs": ''
+    }
+
+    drugs = {
+        "5I71": "escitalopram central site", 
+        "5I6X": "paroxetine central site",
+        "6AWO": "sertraline central site" 
+    }
+
+    for p in drugclasses[drugclass].split(","):
+        pdbviewlist.append((py3Dmol.view(query='pdb:'+ p), drugs[p]))
+    
+    return pdbviewlist
+
+
+
+
+
+
+modecol, optscol = st.sidebar.columns(2)
 mode = modecol.radio(
     label = "Mode", 
-    options = ["pKa Estimation"])
-view = viewcol.radio(
+    options = ["pKa Estimation", "Protein Exploration"])
+
+if mode == "pKa Estimation":
+    view = optscol.radio(
     label = "View",
     options = ["RDKit 2D", "PyMol3D"]
-)
-if mode == "pKa Estimation":
+    )
+
     pkamodule()
+
+elif mode == "Protein Exploration":
+    
+    substratecrystalsmodule()
 #add history
 #add tags (default as pubchem data)
 #add resize canvas
