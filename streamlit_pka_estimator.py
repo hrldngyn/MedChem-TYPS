@@ -210,7 +210,7 @@ mode = modecol.radio(
 if mode == "pKa Estimation":
     view = optscol.radio(
     label = "View",
-    options = ["RDKit 2D", "PyMol3D"]
+    options = ["RDKit 2D", "Py3DMol"]
     )
 
     pkamodule()
