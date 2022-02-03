@@ -31,9 +31,6 @@ def strToMol(input, inputmode):
 
 def draw(c, mol):
     try:
-
-        
-
         if view == "RDKit 2D":
             d = rdMolDraw2D.MolDraw2DSVG(800,800) # or MolDraw2DSVG to get SVGs
             d.drawOptions().addStereoAnnotation = True
@@ -45,7 +42,7 @@ def draw(c, mol):
             d.FinishDrawing()
             im = d.GetDrawingText()
             c.image(im)
-        elif view == "PyMol3D":
+        elif view == "Py3DMol":
             mol = Chem.AddHs(mol)
             AllChem.EmbedMolecule(mol)
             mblock = Chem.MolToMolBlock(mol)
