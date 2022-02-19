@@ -29,16 +29,15 @@ def strToMol(input, inputmode):
             st.error("PubChem search failed, probably")
     return mol
 
-def draw(c, mol):
+def draw(c, mol, overlay):
     try:
         if view == "RDKit 2D":
-            d = rdMolDraw2D.MolDraw2DSVG(800,800) # or MolDraw2DSVG to get SVGs
-            d.drawOptions().addStereoAnnotation = True
-            d.drawOptions().addAtomIndices = True
-            d.drawOptions().fixedBondLength = 100
-            d.drawOptions().comicMode = True
-            d.DrawMolecule(mol)
-            d.TagAtoms(mol)
+            d = rdMolDraw2D.MolDraw2DSVG(650, 650) # or MolDraw2DSVG to get SVGs
+            if overlay != 'None':
+                e.getMap(mol, overlay, d)
+            d.DrawMolecule(mol)            
+            #d
+            #d.TagAtoms(mol)
             d.FinishDrawing()
             im = d.GetDrawingText()
             c.image(im)
@@ -55,8 +54,9 @@ def draw(c, mol):
 
         #c.write(e.getProperties(mol))
     
-    except AttributeError:
-        st.error("Invalid string, probably")
+    except AttributeError as err:
+        print(err)
+        #st.error("Invalid string, probably")
     
 
 def getdeltas(old, props):
@@ -68,55 +68,63 @@ def getdeltas(old, props):
         for label in props:        
             deltas[label] = None
     return deltas
-def displayproperties(props, deltas, showanswers):
+def displayproperties(c, props, deltas, showanswers):
     if showanswers:
-        col1, col2, col3, col4, col5, col6 = st.columns(6)
+        col1, col2, col3 = c.columns(3)
         col1.metric(label="Molecular Weight", value=props["molw"], delta = deltas["molw"])
         col2.metric(label="Crippen LogP", value=props["logp"], delta = deltas["logp"])
         col3.metric(label="TPSA", value=props["tpsa"], delta = deltas["tpsa"])
+
+
+        col4, col5, col6, col7, col8, col9 = c.columns(6)
         col4.metric(label="HB Donors", value=props["hbd"], delta = deltas["hbd"])
         col5.metric(label="HB Acceptors", value=props["hba"], delta = deltas["hba"])
         col6.metric(label="Rotatable Bonds", value=props["rotb"], delta = deltas["rotb"])
-
-        col7, col8, col9, col10, col11, col12 = st.columns(6)
         col7.metric(label="Carbonyls", value = props["carbonyls"], delta = deltas["carbonyls"])
 
 
 def pkamodule():
     def updatepka():
         try:
-            mol = strToMol(molecule_input, inputmode)
-            if mol.GetNumAtoms() != 0:
-                if showanswers:
-                    e.estimateMolecule(mol)
-                    draw(c, mol)
-                else:
-                    draw(c, mol)
+            mols = []
+            inlist = molecule_input.split(",")
+            for val, molin in enumerate(inlist):
+                mol = strToMol(molin.strip(), inputmode)
+                if mol.GetNumAtoms() != 0:
+                    if showanswers:
+                        e.estimateMolecule(mol)
+                        draw(c, mol, overlay)
+                    else:
+                        draw(c, mol, overlay)
 
-            props = e.getProperties(mol)
-            oldprops = {'molw': 0}
-            filename = 'oldprops.pk'
-            if os.path.exists(filename) and os.stat(filename).st_size != 0:
-                with open(filename, 'rb') as fi:
-                    oldprops = pickle.load(fi)
-                    print(oldprops)
-            if props['molw'] != 0:
-                with open(filename, 'wb') as fi:
-                    pickle.dump(props, fi)
-            
-            deltas = getdeltas(oldprops, props)
-            if deltas['molw'] == 0 or props['molw'] == 0:
-                for label in deltas:        
-                    deltas[label] = None
-            
-            name = e.SMILESToName(Chem.MolToSmiles(mol))
-            st.header(name)
-            displayproperties(props, deltas, showanswers)
+                props = e.getProperties(mol)
+                oldprops = {'molw': 0}
+                filename = 'oldprops' + molin + '.pk'
+                if os.path.exists(filename) and os.stat(filename).st_size != 0:
+                    with open(filename, 'rb') as fi:
+                        oldprops = pickle.load(fi)
+                        print(oldprops)
+                if props['molw'] != 0:
+                    with open(filename, 'wb') as fi:
+                        pickle.dump(props, fi)
+                
+                deltas = getdeltas(oldprops, props)
+                if deltas['molw'] == 0 or props['molw'] == 0:
+                    for label in deltas:        
+                        deltas[label] = None
+                
+                name = e.SMILESToName(Chem.MolToSmiles(mol))
+                c.header(name)
+                displayproperties(c, props, deltas, showanswers)
 
-            history.append((mol, molecule_input))
-        
-        except AttributeError:
-            st.error("Not a valid molecule")
+                mols.append(mol)
+
+
+            history.append((mol, molecule_input))                
+
+        except AttributeError as err:
+            print(err)
+            #st.error("Not a valid molecule")
 
     ph = {
         'SMILES': 'SMILES for the camera, please',
@@ -124,9 +132,11 @@ def pkamodule():
     }
 
     st.title('pKa Estimation')
-    inputmode = st.selectbox('Input Format', options = ['SMILES', 'Drug Name'])
-    molecule_input = st.text_input('Input', placeholder=ph[inputmode], key='input')
+    inputmode = st.selectbox('Input Format', options = ['Drug Name', 'SMILES'])
+    molecule_input = st.text_input('Input (try multiple drugs separated by a comma!)', placeholder=ph[inputmode], key='input')
     showanswers = st.checkbox("Show Answers")
+    
+    overlay = st.selectbox('Overlay a map!', options = ['None', 'LogP', 'Partial Charges'])
 
     c = st.container()
 

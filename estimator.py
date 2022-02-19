@@ -1,10 +1,13 @@
 from numpy import indices
 from rdkit import Chem
+from rdkit.Chem import AllChem
 from rdkit.Chem import rdchem
 from rdkit.Chem import Draw
 from rdkit.Chem.Draw import rdMolDraw2D
+from rdkit.Chem.Draw import SimilarityMaps
 from rdkit.Chem import Fragments
 from rdkit.Chem import Descriptors
+from rdkit.Chem import rdMolDescriptors
 
 # import matplotlib.pyplot as pyplot
 # import matplotlib.image as mpimg
@@ -421,3 +424,12 @@ def getProperties(m):
 
     print(properties)
     return properties
+
+def getMap(m, type, d):
+    if type == "LogP":
+        contribs = rdMolDescriptors._CalcCrippenContribs(m)
+        SimilarityMaps.GetSimilarityMapFromWeights(m,[x for (x,y) in contribs], contourLines=10, draw2d = d)
+    if type == "Partial Charges":
+        AllChem.ComputeGasteigerCharges(m)
+        contribs = [m.GetAtomWithIdx(i).GetDoubleProp('_GasteigerCharge') for i in range(m.GetNumAtoms())]
+        SimilarityMaps.GetSimilarityMapFromWeights(m, contribs, contourLines=10, draw2d = d)
